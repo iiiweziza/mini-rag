@@ -21,12 +21,26 @@ $ conda activate mini-rag
 
 ### .gitignore => Git can specify which files or parts of your project should be ignored  
 ### LICENSE => You can write your license
+### .env => to put environment variables (puplic and private)=> .env put in .gitignore file so git ignore it 
+### .env.example => to put environment variables but to seeing in git (public)
 
-### requirmnts.txt 
- to install packages from the file :
+
+
+
+### requirements.txt 
+ to install packages from the file 
+
+
+ ## Install the requirements packages
  ```bash
  $ pip install -r requirements.txt 
  ```
 
 
-## (Optional)
+## Setup the environment variables 
+
+```bash 
+$ cp .env.example .env
+```
+set your private environment variables in .env 
+like 'OPEN_API_KEY' value. 
