@@ -4,6 +4,8 @@ mini rag application for questions ansowering
 
 ## Requirments 
 Python =3.8 or later
+### used Packages and projects: 
+#### FastAPI 
 
 ### Install Python using MiniConda
 Download and install MiniConda from here
@@ -17,16 +19,20 @@ Activate the environment:
 $ conda activate mini-rag
 ```
 
-## files
+# files
 
-### .gitignore => Git can specify which files or parts of your project should be ignored  
-### LICENSE => You can write your license
-### .env => to put environment variables (puplic and private)=> .env put in .gitignore file so git ignore it 
-### .env.example => to put environment variables but to seeing in git (public)
-### asset 
-#### .gitkeep ==> reverse of gitignore 
+## .gitignore => Git can specify which files or parts of your project should be ignored  
+## LICENSE => You can write your license
+## .env => to put environment variables (puplic and private)=> .env put in .gitignore file so git ignore it 
+## .env.example => to put environment variables but to seeing in git (public)
+
+## asset :
+### .gitkeep ==> reverse of gitignore 
 ### postman collectin => if you want to use postman to host your web easily 
 
+## routs:
+### __init__ =>
+### base => putting routs APIs details to call it from main file 
 
 
 
