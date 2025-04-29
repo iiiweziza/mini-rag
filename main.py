@@ -1,9 +1,10 @@
 from fastapi import FastAPI 
-app = FastAPI()
+from dotenv import load_dotenv   # for can load from .env file to the system
+load_dotenv(".env")
+from routes import base
 
-@app.get("/welcome")
-def welcome():
-    return{
-        "message":"Welcome to Mini RAG App!"
-    }
-         
+
+
+app = FastAPI()
+#call base_router by app
+app.include_router(base.base_router)
