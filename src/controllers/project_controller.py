@@ -13,8 +13,8 @@ class ProjectController(BaseController):
     '''here we will define the data controller 
     the data controller will take from super class BaseControllers''' 
 
-    def __init__(self, settings):
-        super().__init__(settings)  # Pass the settings to the BaseController constructor
+    def __init__(self):
+        super().__init__()  # Pass the settings to the BaseController constructor
 
         # Now I want to call the files+ project id dir and create it if not exist
 

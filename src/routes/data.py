@@ -3,6 +3,11 @@ from helpers.config import get_settings, Settings  # importing settings from hel
 import os 
 import aiofiles
 from controllers import DataController, ProjectController
+import logging
+
+from models.enums import ResponseEnumSignal
+
+logs = logging.getLogger('uvicorn.error')
 
 
 data_router = APIRouter(  
@@ -14,15 +19,20 @@ data_router = APIRouter(
 @data_router.post("/Upload/{uploading_id}")
 async def upload_data(file: UploadFile, uploading_id: str,
                       app_settings: Settings = Depends(get_settings)):
-    is_valid, result_signal = DataController(app_settings).validate_file(file=file)
+    data_controller = DataController()
+    is_valid, result_signal =data_controller.validate_file(file=file)
     if not is_valid:
         return result_signal
 
-    project_dir_path = ProjectController(app_settings ).get_project_dir(uploading_id=uploading_id)
-    file_path = os.path.join(project_dir_path, file.filename)
+    project_dir_path = ProjectController().get_project_dir(uploading_id=uploading_id)
+    file_path = data_controller.generate_unique_file_name(org_file_name=file.filename,
+                                                           uploading_id=uploading_id)
+    try:
+        async with aiofiles.open(file_path, 'wb') as out_file:
+            while chunk := await file.read(app_settings.FILE_CHUNK_SIZE):
+                await out_file.write(chunk)
+    except Exception as e:      
+        logs.error(f"Error saving file: {e}")
+        return ResponseEnumSignal.FILE_NOT_SAVED.value
 
-    async with aiofiles.open(file_path, 'wb') as out_file:
-        while chunk := await file.read(app_settings.FILE_CHUNK_SIZE):
-            await out_file.write(chunk)
-
-    return result_signal  # Only return after file is saved
+    return result_signal  # Only return after file is saved 
