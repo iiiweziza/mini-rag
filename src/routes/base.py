@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, Depends
+from helpers.config import get_settings, Settings  # importing settings from helpers file
 import os 
 
 # APIRoute => to help you routing between APIs in the system and call it from another file.
@@ -9,9 +10,11 @@ base_router = APIRouter(
 )
 
 @base_router.get("/")
-async def welcome():
-    app_name = os.getenv('APP_NAME')   # importing from .env file
-    app_version = os.getenv('APP_VERSION')
+async def welcome(app_settings :Settings  = Depends(get_settings)):  #:Settings => from type Settings
+    # Depends make it is can't be called without the settings file
+    # get_settings function is used to get the settings from the config file
+    app_name = app_settings.APP_NAME  
+    app_version = app_settings.APP_VERSION  # importing from get_settings function
     return{
         "message":"Welcome to Mini RAG App!",
         "App Name: " : app_name,

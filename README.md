@@ -26,6 +26,9 @@ $ conda activate mini-rag
 ## .env => to put environment variables (puplic and private)=> .env put in .gitignore file so git ignore it 
 ## .env.example => to put environment variables but to seeing in git (public)
 
+
+# in the file structurals we followed a MCV method (Models - Controllers - Views)
+
 ## asset :
 ### .gitkeep ==> reverse of gitignore 
 ### postman collectin => if you want to use postman to host your web easily 
@@ -33,6 +36,10 @@ $ conda activate mini-rag
 ## routs:
 ### __init__ =>
 ### base => putting routs APIs details to call it from main file 
+ 
+## helpers => to put on it configrations and settitng to help me in all the project 
+### config  => initiallization for setting to replace dotenv and loaded form .env file by a function.
+
 
 
 
