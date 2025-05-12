@@ -70,3 +70,10 @@ like 'OPEN_API_KEY' value.
  uvicorn main:app --reload --host 0.0.0.0 --port 5000
  ```
  host 0.0.0.0 => access all to the host 
+
+
+
+ # In processing file step we used langchin 
+ ## textloader=>https://python.langchain.com/api_reference/community/document_loaders/langchain_community.document_loaders.text.TextLoader.html
+ ## pdfloader=>https://python.langchain.com/docs/integrations/document_loaders/pymupdf/
+ ## textsplitter=RecursiveCharacterTextSplitter=>https://python.langchain.com/docs/concepts/text_splitters/

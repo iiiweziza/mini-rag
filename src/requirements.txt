@@ -1,6 +1,11 @@
 fastapi[standard]==0.115.12 
-uvicorn[standard]==0.29.0
+uvicorn[standard]== 0.34.2
 python-multipart==0.0.20
-Python-dotenv==1.0.1
-pydantic-settings==2.2.1
-aiofiles==23.2.1
+Python-dotenv==1.1.0
+pydantic-settings==2.9.1
+aiofiles==24.1.0
+langchain==0.3.25
+PyMuPDF==1.25.5
+langchain-community==0.3.24
+langchain-text-splitters==0.3.8
+

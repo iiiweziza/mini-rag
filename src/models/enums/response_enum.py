@@ -15,3 +15,4 @@ class ResponseEnumSignal(Enum):
     FILE_NOT_UPDATED = "File not updated"
     FILE_NOT_DELETED = "File not deleted"
     UPLOADED = "File uploaded successfully"
+    FAILED_PROCESS = "File process failed"

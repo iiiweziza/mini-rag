@@ -2,8 +2,9 @@ from fastapi import FastAPI, APIRouter, Depends,UploadFile
 from helpers.config import get_settings, Settings  # importing settings from helpers file
 import os 
 import aiofiles
-from controllers import DataController, ProjectController
+from controllers import DataController, ProjectController, ProcessingController
 import logging
+from routes.schemes.data_schema import ProcessRequest
 
 from models.enums import ResponseEnumSignal
 
@@ -40,3 +41,25 @@ async def upload_data(file: UploadFile, uploading_id: str,
         "Result":  result_signal,
         "File ID" : file_id  # Only return after file is saved 
     }
+
+
+
+#putting processig in the same data router 
+@data_router.post("/process/{uploading_id}")
+async def process_endpoint(uploading_id: str,
+                      ProcessRequest : ProcessRequest ):
+    file_id = ProcessRequest.file_id
+    chunk_size= ProcessRequest.chunk_size
+    chunk_overlap= ProcessRequest.chunk_overlap
+    do_reset = ProcessRequest.do_reset
+    content = ProcessingController(uploading_id=uploading_id).get_file_content(file_id=file_id)
+
+    file_chunks = ProcessingController(uploading_id=uploading_id).process_file_content(file_content=content,file_id=file_id,chunk_size=chunk_size,chunk_overlap=chunk_overlap)
+    
+    if file_chunks is None or len(file_chunks) == 0:
+        return {
+            "Result": ResponseEnumSignal.FAILED_PROCESS.value,
+            "File ID" : file_id
+        }
+    
+    return file_chunks
