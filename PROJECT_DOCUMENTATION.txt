@@ -1,0 +1,88 @@
+# Mini-RAG Project Documentation
+
+## Project Overview
+Mini-RAG is a FastAPI-based application for question answering and document processing. It uses modern Python libraries and follows an MVC-like structure (Models, Controllers, Views).
+
+---
+
+## Project Structure
+
+- **src/**
+  - **main.py**: FastAPI app entry point, includes routers.
+  - **requirements.txt**: Project dependencies.
+  - **assets/**: Contains uploaded files and Postman collection.
+  - **controllers/**: Business logic for data, processing, and project management.
+  - **helpers/**: Configuration and settings management.
+  - **models/**: Enums and data models.
+  - **routes/**: API endpoints (base, data) and request schemas.
+
+---
+
+## Setup Steps
+
+1. **Clone the repository** and navigate to the project directory.
+
+2. **Create and activate a Python environment** (recommended: conda):
+   ```bash
+   conda create -n mini-rag python=3.8
+   conda activate mini-rag
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r src/requirements.txt
+   ```
+
+4. **Environment Variables**:
+   - Copy `.env.example` to `.env` and set your private environment variables (e.g., `API_KEY`, `APP_NAME`, etc.).
+
+5. **Run the application**:
+   ```bash
+   uvicorn main:app --reload --host 0.0.0.0 --port 5000
+   ```
+
+---
+
+## Main Components
+
+- **Configuration**: Managed via `helpers/config.py` using Pydantic's `BaseSettings`.
+- **Controllers**:
+  - `base_controller.py`: Base class for controllers, handles settings and utility functions.
+  - `data_controller.py`: Handles file validation, unique file naming, and cleaning file names.
+  - `processing_controller.py`: Handles file loading (TXT, PDF), content extraction, and chunking with LangChain splitters.
+  - `project_controller.py`: Manages project directories for uploads.
+- **Routes**:
+  - `base.py`: Welcome endpoint, returns app name and version.
+  - `data.py`: Handles file upload and processing endpoints.
+- **Models/Enums**: Define response and processing types.
+- **Schemes**: Pydantic models for request validation.
+
+---
+
+## Key Features Implemented
+
+- Environment-based configuration loading.
+- File upload endpoint with type and size validation.
+- Unique file naming and cleaning.
+- Project-based directory management for uploads.
+- File processing endpoint supporting TXT and PDF files.
+- Document chunking using LangChain's `RecursiveCharacterTextSplitter`.
+- Modular, extensible controller structure.
+
+---
+
+## Next Steps / TODO
+- Add authentication and authorization.
+- Implement more document loaders and chunking strategies.
+- Add more tests and error handling.
+- Improve API documentation and OpenAPI schema.
+
+---
+
+## Notes
+- All uploaded files are stored in `src/assets/uploaded_files/` under project-specific directories.
+- The project is designed for easy extension and integration with other document loaders or vector stores.
+
+---
+
+*This documentation summarizes the project structure and steps up to the current implementation.*
