@@ -18,9 +18,9 @@ class ProjectController(BaseController):
 
         # Now I want to call the files+ project id dir and create it if not exist
 
-    def get_project_dir(self,uploading_id:str):
+    def get_project_dir(self, project_id: str):
         '''this function will return the path of the project directory'''
-        project_dir = os.path.join(self.uploaded_files_dir, uploading_id)
+        project_dir = os.path.join(self.uploaded_files_dir, project_id)
         if not os.path.exists(project_dir):
             os.makedirs(project_dir)
         return project_dir

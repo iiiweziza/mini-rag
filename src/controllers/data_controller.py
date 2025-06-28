@@ -22,10 +22,10 @@ class DataController(BaseController):
             return False , ResponseEnumSignal.SIZE_LIMIT_EXCEEDED.value
         return True , ResponseEnumSignal.UPLOADED.value
     
-    def generate_unique_file_path(self,org_file_name:str,uploading_id: str):
-
+    def generate_unique_file_path(self, org_file_name: str, project_id: str):
+        '''this function will generate a unique file path for the uploaded file'''
         random_string = self.generate_random_string()
-        project_dir_path = ProjectController().get_project_dir(uploading_id=uploading_id)
+        project_dir_path = ProjectController().get_project_dir(project_id=project_id)
 
         clean_file_name = self.get_clean_file_name(org_file_name)
 

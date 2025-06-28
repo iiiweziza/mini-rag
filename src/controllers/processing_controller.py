@@ -7,9 +7,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 class ProcessingController(BaseController):
-    def __init__(self,uploading_id:str):
+    def __init__(self, project_id: str):
         super().__init__()  # Pass the settings to the BaseController constructor
-        self.project_dir = ProjectController().get_project_dir(uploading_id= uploading_id)
+        self.project_dir = ProjectController().get_project_dir(project_id=project_id)
 
     def get_file_extension(self,file_id : str):
         """
