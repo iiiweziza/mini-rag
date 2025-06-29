@@ -29,18 +29,19 @@ class ProjectModel(BaseDataModel):
             self.collection = self.db_client[DatabaseEnumType.COLLECTION_PROJECT_NAME.value]
             # create the collection with the indexes from the project schema
             indexes = Project.get_indexes()  # get the indexes from the project schema
-            await self.collection.create_indexes(
-                index["key"],
-                name = index["name"],
-                unique = index["unique"]
-            )
+            for index in indexes:
+                await self.collection.create_index(
+                    index["key"],
+                    name=index["name"],
+                    unique=index["unique"]
+                )
 
        #now we want to inser the database but with the schema
     async def insert_project(self,project: Project):
         # we will use the insert_one method to insert the project in the collection
         result = await self.collection.insert_one(project.dict(by_alias=True, exclude_unset=True)) # to appeare with alies name 
         #insert with project schema and convert it to dict to can insert in the db
-        project._id = result.inserted_id
+        project.id = result.inserted_id
         return project    
     
     async def get_project_or_create_one(self, project_id : str):  # project_id => the uploading id 
@@ -72,4 +73,4 @@ class ProjectModel(BaseDataModel):
         async for document in cursor:
             projects.append(Project(**document))
 
-        return projects,total_pages    
+        return projects,total_pages

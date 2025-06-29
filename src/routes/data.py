@@ -7,8 +7,10 @@ import logging
 from routes.schemes.data_schema import ProcessRequest
 from models.project_model import ProjectModel
 from models.db_schemes.data_chunk import DataChunk
+from models.db_schemes.assets_files import AssetsFiles
 from models.chunk_model import ChunkModel
-from models.enums import ResponseEnumSignal
+from models.assets_model import AssetModel
+from models.enums import ResponseEnumSignal , AssetsEnumType
 from fastapi.responses import JSONResponse
 
 logs = logging.getLogger('uvicorn.error')
@@ -50,10 +52,23 @@ async def upload_data(request:Request,file: UploadFile, Project_id: str,
     except Exception as e:      
         logs.error(f"Error saving file: {e}")
         return ResponseEnumSignal.FILE_NOT_SAVED.value
+    
+    # Store file assets in the database
+    asset_model = await AssetModel.create_instance(db_client=request.app.client_db) 
+
+    asset_resource =  AssetsFiles(
+         asset_project_id=project.id,  # Using the original project_id, not the MongoDB _id
+         asset_type = AssetsEnumType.ASSETS_FILE.value,  # Using the enum value for asset type
+         asset_name = file_id,
+         asset_size = os.path.getsize(file_path),  # Get the file size
+    )
+
+    #Now we can insert the asset into the database by our new resource 
+    asset_record = await asset_model.insert_asset(asset=asset_resource)
 
     return {
         "Result": result_signal,
-        "File ID": file_id,
+        "File ID":str(asset_record.id),  # Using asset_name as the file ID
         #"Project_id": str(project._id)  # Return MongoDB's _id 
     }
 
