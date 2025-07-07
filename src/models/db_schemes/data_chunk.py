@@ -10,6 +10,7 @@ class DataChunk(BaseModel):
     content: str = Field(..., min_length=1)  # The actual text content
     chunk_index: int = Field(..., ge=0)  # Index of this chunk in the document
     source_file: str = Field(..., min_length=1)  # Original file name
+    chunks_file_asset_id: ObjectId  # the asset id of the file this chunk belongs to in assets database (collection)
 
     class Config:
         arbitrary_types_allowed = True  # Allow ObjectId type

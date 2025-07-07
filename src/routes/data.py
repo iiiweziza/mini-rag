@@ -4,6 +4,7 @@ import os
 import aiofiles
 from controllers import DataController, ProjectController, ProcessingController
 import logging
+
 from routes.schemes.data_schema import ProcessRequest
 from models.project_model import ProjectModel
 from models.db_schemes.data_chunk import DataChunk
@@ -78,55 +79,127 @@ async def upload_data(request:Request,file: UploadFile, Project_id: str,
 @data_router.post("/process/{Project_id}")
 async def process_endpoint(request: Request, Project_id: str,
                       ProcessRequest: ProcessRequest):
+    # Create a project model instance using the database client
     project_model =await ProjectModel.create_instance(db_client=request.app.client_db)
+    # Get the project by ID or create it if it doesn't exist
     project = await project_model.get_project_or_create_one(
         project_id=Project_id
     )
     
+    # Extract parameters from the request
     file_id = ProcessRequest.file_id
     chunk_size = ProcessRequest.chunk_size
     chunk_overlap = ProcessRequest.chunk_overlap
     do_reset = ProcessRequest.do_reset
     
-    content = ProcessingController(project_id=Project_id).get_file_content(file_id=file_id)
-
-    file_chunks = ProcessingController(project_id=Project_id).process_file_content(
-        file_content=content,
-        file_id=file_id,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap
-    )
+    print(f"Requested Project_id (from path): {Project_id}")
+    print(f"MongoDB Project _id (project.id): {project.id}")
+    print(f"ProcessRequest.file_id: {ProcessRequest.file_id}")
     
-    if file_chunks is None or len(file_chunks) == 0:
-        return {
-            "Result": ResponseEnumSignal.FAILED_PROCESS.value,
-            "File ID": file_id
-        }
-    
-    file_chunks_records = [
-        DataChunk(
-            content=chunk.page_content,
-            project_id=Project_id,  # Using the original project_id, not the MongoDB _id
-            chunk_index=i,
-            source_file=file_id  # Using file_id as the source file name
+    # Create an asset model instance for asset operations
+    asset_model = await AssetModel.create_instance(
+             db_client=request.app.client_db
         )
-        for i, chunk in enumerate(file_chunks)
-    ]
-    
+
+    projects_files_ids = {}
+    if ProcessRequest.file_id : 
+         # If a specific file_id is provided, fetch that asset only
+         asset_record = await asset_model.get_asset_by_id(
+             project_id=project.id,
+             asset_file_id=ProcessRequest.file_id # That you give him.
+         )
+         if asset_record is None:
+             # Return error if the file_id does not exist
+             return JSONResponse(
+                 {
+                     "Result": ResponseEnumSignal.FILE_ID_ERROR.value,
+                     "File ID": ProcessRequest.file_id
+                 },
+                 status_code=404
+             )
+            # If file_id is provided, use it to get the specific file
+         projects_files_ids = {
+                asset_record.id: asset_record.asset_name
+             }
+
+    else:
+        # If no file_id is provided, get all files of the specified type in the project
+        assets_project_files = await asset_model.get_all_project_assets(
+            project_id=project.id,  # Use the MongoDB ObjectId for asset_project_id
+            asset_type=AssetsEnumType.ASSETS_FILE.value
+        )
+        # Build a dictionary of all asset ids and names for the project
+        projects_files_ids = {record.id : record.asset_name
+                              for record in assets_project_files
+                              }
+        print(f"Found asset file ids: {projects_files_ids}")
+
+    # If no files are found, return a 404 error
+    if len(projects_files_ids) == 0:
+        return JSONResponse(
+            {
+                "Result": ResponseEnumSignal.NO_FILES_FOUND.value,
+                "Project ID": Project_id
+            },
+            status_code=404
+        )
+
+    # Process each file in the project
+    process_controller = ProcessingController(project_id=Project_id)
+
+    no_records_chunks = 0
+    no_files = 0
+
+    ### for testing 
     chunk_model =await ChunkModel.create_instance(db_client=request.app.client_db)
 
     if do_reset == 1 :
-                # If do_reset is 1, delete all existing chunks for this project
-                _= await chunk_model.delete_chunks_by_project_id(project_id=Project_id)
+                    # If do_reset is 1, delete all existing chunks for this project
+        _= await chunk_model.delete_chunks_by_project_id(project_id=Project_id)
+
+
+    for chunks_file_asset_id , file_id in projects_files_ids.items():
+        # Get the file content using the file_id
+        content = process_controller.get_file_content(file_id=file_id)
+
+        if content is None or len(content) == 0:
+            logs.error(f"File {file_id} is empty or not found.")
+            continue  # Skip to the next file if content is empty or not found
+
+        file_chunks = process_controller.process_file_content(
+            file_content=content,
+            file_id=file_id,
+            chunk_size=chunk_size,
+            chunk_overlap=chunk_overlap
+        )
         
- 
-    # Insert the chunks into the database
-    no_records_chunks = await chunk_model.insert_many_chunks(file_chunks_records)
-    return JSONResponse(
-        {
-            "Result": ResponseEnumSignal.SUCCESS.value,
-            "File ID": file_id,
-            "Number of Chunks": no_records_chunks
-        }
-    )           
-   
+        if file_chunks is None or len(file_chunks) == 0:
+            return {
+                "Result": ResponseEnumSignal.FAILED_PROCESS.value,
+                "File ID": file_id
+            }
+        
+        file_chunks_records = [
+            DataChunk(
+                content=chunk.page_content,
+                project_id=Project_id,  # Using the original project_id, not the MongoDB _id
+                chunk_index=i,
+                source_file=file_id,  # Using file_id as the source file name
+                chunks_file_asset_id=chunks_file_asset_id,  # Using the asset ID from the assets database
+            )
+            for i, chunk in enumerate(file_chunks)
+        ]
+
+    
+
+        # Insert the chunks into the database
+        no_records_chunks = await chunk_model.insert_many_chunks(file_chunks_records)
+        no_files += 1
+        return JSONResponse(
+            {
+                "Result": ResponseEnumSignal.SUCCESS.value,
+                "File ID": file_id,
+                "Number of Chunks": no_records_chunks,
+                "Processed Files": no_files,
+            }
+        )

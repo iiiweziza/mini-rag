@@ -16,3 +16,5 @@ class ResponseEnumSignal(Enum):
     FILE_NOT_DELETED = "File not deleted"
     UPLOADED = "File uploaded successfully"
     FAILED_PROCESS = "File process failed"
+    NO_FILES_FOUND = "No files found for the project"
+    FILE_ID_ERROR = "No files found for the given file ID"

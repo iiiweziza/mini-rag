@@ -28,11 +28,12 @@ class ChunkModel(BaseDataModel):
             self.collection = self.db_client[DatabaseEnumType.COLLECTION_CHUNKS_NAME.value]
             # create the collection with the indexes from the project schema
             indexes = DataChunk.get_indexes()  # get the indexes from the chunk schema
-            await self.collection.create_indexes(
-                index["key"],
-                name = index["name"],
-                unique = index["unique"]
-            )
+            for index in indexes:
+                 await self.collection.create_index(
+                     index["key"],
+                     name=index.get("name"),
+                     unique=index.get("unique", False)
+                    )
 
     async def insert_chunk(self, chunk: DataChunk):
         """

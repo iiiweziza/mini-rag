@@ -48,12 +48,33 @@ class AssetModel(BaseDataModel):
         asset.id = result.inserted_id
         return asset
     
-    async def get_all_project_assets(sef,project_id: str):
+    async def get_all_project_assets(self,project_id, asset_type: str):
         """
         Retrieve all assets associated with a specific project.
         :param project_id: The ID of the project to retrieve assets for.
         :return: A list of AssetsFiles objects associated with the project.
         """
-        return await self.collection.find({
-            "asset_project_id": ObjectId(project_id) if isinstance(project_id, str) else project_id
+        records =  await self.collection.find({
+        "$or": [
+        {"asset_project_id": project_id},
+        {"asset_project_id": str(project_id)}
+       ],
+        "asset_type": asset_type,
         }).to_list(length=None)
+        return [AssetsFiles(**record) for record in records]
+    
+    async def get_asset_by_id(self,project_id , asset_file_id:str):
+        """
+        Retrieve a specific asset by its ID.
+        :param project_id: The ID of the project the asset belongs to.
+        :param asset_file_id: The ID of the asset file to retrieve.
+        :return: An AssetsFiles object if found, None otherwise.
+        """
+        record = await self.collection.find_one({
+            "$or": [
+        {"asset_project_id": project_id},
+        {"asset_project_id": str(project_id)}
+       ],
+            "asset_name": asset_file_id
+        })
+        return AssetsFiles(**record) if record else None

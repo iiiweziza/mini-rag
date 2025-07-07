@@ -26,6 +26,10 @@ class ProcessingController(BaseController):
         file_extension = self.get_file_extension(file_id)
         file_path =os.path.join(self.project_dir, file_id)
 
+        # Check if the file exists
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"The file {file_path} does not exist.") 
+
         if file_extension == processingEnumType.TXT.value:
             return TextLoader(file_path ,encoding="utf-8")
             
@@ -38,8 +42,10 @@ class ProcessingController(BaseController):
         Get the file content using the appropriate loader.
         """
         loader = self.get_file_loader(file_id)
-        return loader.load() 
-  
+        if loader:
+            return loader.load()
+        return None
+
     def process_file_content(self,file_content:str,file_id:str,chunk_size:int=100,chunk_overlap:int=20):
         """
         Process the file content using the RecursiveCharacterTextSplitter.
