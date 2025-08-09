@@ -47,22 +47,52 @@ class AssetModel(BaseDataModel):
         result = await self.collection.insert_one(asset.dict(by_alias=True, exclude_unset=True))
         asset.id = result.inserted_id
         return asset
+
+    async def get_asset_by_mongodb_id(self, project_id: str, mongodb_id: str):
+        """
+        Get an asset by its MongoDB ID.
+        :param project_id: The project ID the asset belongs to
+        :param mongodb_id: The MongoDB ID of the asset (_id field)
+        :return: The asset if found, None otherwise
+        """
+        try:
+            asset_id = ObjectId(mongodb_id)
+            print(f"Looking for asset with _id: {asset_id}")
+            # First try to find just by _id to see if the asset exists at all
+            asset_doc = await self.collection.find_one({
+                "_id": asset_id
+            })
+            if not asset_doc:
+                print(f"No asset found with _id: {asset_id}")
+                return None
+            
+            print(f"Found asset: {asset_doc}")
+            print(f"Asset project_id: {asset_doc.get('asset_project_id')}, Looking for project_id: {project_id}")
+            
+            # Now check if it belongs to the correct project
+            if str(asset_doc.get('asset_project_id')) == str(project_id):
+                return AssetsFiles(**asset_doc)
+            else:
+                print(f"Asset found but belongs to different project. Expected: {project_id}, Found: {asset_doc.get('asset_project_id')}")
+                return None
+        except Exception as e:
+            print(f"Error in get_asset_by_mongodb_id: mongodb_id={mongodb_id}, project_id={project_id}, error={str(e)}")
+            return None
     
-    async def get_all_project_assets(self,project_id, asset_type: str):
+    async def get_all_project_assets(self, project_id, asset_type: str):
         """
-        Retrieve all assets associated with a specific project.
-        :param project_id: The ID of the project to retrieve assets for.
-        :return: A list of AssetsFiles objects associated with the project.
+        Retrieve all assets associated with a specific project, sorted by publish date descending.
         """
-        records =  await self.collection.find({
-        "$or": [
-        {"asset_project_id": project_id},
-        {"asset_project_id": str(project_id)}
-       ],
-        "asset_type": asset_type,
-        }).to_list(length=None)
+        records = await self.collection.find({
+            "$or": [
+                {"asset_project_id": project_id},
+                {"asset_project_id": str(project_id)}
+            ],
+            "asset_type": asset_type,
+        }).sort("asset_published", -1).to_list(length=None)
         return [AssetsFiles(**record) for record in records]
-    
+
+
     async def get_asset_by_id(self,project_id , asset_file_id:str):
         """
         Retrieve a specific asset by its ID.

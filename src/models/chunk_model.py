@@ -48,9 +48,41 @@ class ChunkModel(BaseDataModel):
         Retrieves a DataChunk by its ID.
         """
         record = await self.collection.find_one({"_id": ObjectId(chunk_id)})
-        if record is None:
-            return None
-        return DataChunk(**record)
+        
+    async def count_project_chunks(self, project_id: str):
+        """
+        Count the number of chunks for a given project.
+        """
+        return await self.collection.count_documents({"project_id": project_id})
+        
+    async def get_collection_info(self):
+        """
+        Get information about the chunks collection.
+        """
+        stats = await self.db_client.command("collstats", DatabaseEnumType.COLLECTION_CHUNKS_NAME.value)
+        return {
+            "count": stats.get("count", 0),
+            "size": stats.get("size", 0),
+            "avgObjSize": stats.get("avgObjSize", 0)
+        }
+        
+    async def get_project_chunks_bulk(self, project_id: str, limit: int = 1000):
+        """
+        Get all chunks for a project in one query with a limit.
+        Uses the string project_id, not MongoDB's _id.
+        """
+        print(f"Fetching chunks for project_id: {project_id}")
+        try:
+            cursor = self.collection.find({"project_id": project_id}).limit(limit)
+            chunks = await cursor.to_list(length=limit)
+            total_chunks = len(chunks)
+            print(f"Found {total_chunks} chunks for project {project_id}")
+            if chunks:
+                print(f"Sample chunk content: {chunks[0].get('content', '')[:100]}")
+            return [DataChunk(**chunk) for chunk in chunks]
+        except Exception as e:
+            print(f"Error getting project chunks: {str(e)}")
+            return []
 
     async def insert_many_chunks(self, chunks: list[DataChunk], batch_size: int = 100):
         """
@@ -73,3 +105,26 @@ class ChunkModel(BaseDataModel):
             {"project_id":project_id}
         )
         return result.deleted_count  # Returns the number of deleted documents
+    
+    async def get_all_project_chunks(self, project_id: ObjectId, page_no: int = 1, page_size: int = 50):
+        """
+        Retrieves all chunks associated with a specific project ID.
+        page_size refers to the maximum number of chunk records returned per page when retrieving chunks for a specific project.
+        """
+        try:
+            # Add debug logging
+            print(f"Searching for chunks with project_id: {project_id}")
+            
+            # Use the correct field name from the schema
+            query = {"project_id": str(project_id)}  # Convert ObjectId to string as per schema
+            records = await self.collection.find(query).skip(
+                (page_no - 1) * page_size).limit(page_size).to_list(length=None)
+
+            print(f"Found {len(records)} records")
+            if records:
+                print(f"Sample record: {records[0]}")
+            
+            return [DataChunk(**record) for record in records]
+        except Exception as e:
+            print(f"Error in get_all_project_chunks: {str(e)}")
+            return []
