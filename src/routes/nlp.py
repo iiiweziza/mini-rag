@@ -46,7 +46,8 @@ async def index_project(request:Request,Project_id: str,
     nlp_controller = NLPController(
         vector_db_client=request.app.vector_db_client,
         embedding_client=request.app.embedding_client,
-        generation_client=request.app.generation_client
+        generation_client=request.app.generation_client,
+        parser_template=request.app.parser_template
     )
 
     debug_messages = []
@@ -137,7 +138,8 @@ async def info_project(request:Request,Project_id: str):
     nlp_controller = NLPController(
         vector_db_client=request.app.vector_db_client,
         embedding_client=request.app.embedding_client,
-        generation_client=request.app.generation_client
+        generation_client=request.app.generation_client,
+        parser_template=request.app.parser_template
     )
 
     collection_info = nlp_controller.get_vector_db_collection_info(
@@ -168,7 +170,8 @@ async def search_project(request:Request,Project_id: str , search_request: searc
     nlp_controller = NLPController(
         vector_db_client=request.app.vector_db_client,
         embedding_client=request.app.embedding_client,
-        generation_client=request.app.generation_client
+        generation_client=request.app.generation_client,
+        parser_template=request.app.parser_template
     )
 
     
@@ -189,7 +192,50 @@ async def search_project(request:Request,Project_id: str , search_request: searc
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            "search_results": result,
+            "search_results": [ res.dict() for res in result],
             "message": ResponseEnumSignal.VECTOR_DB_SEARCH_SUCCESS.value
+        }
+    )
+
+
+@nlp_router.post ("/index/answer/{Project_id}") 
+async def answer_rag(request:Request,Project_id: str , search_request: search_request):
+    #the request follow the app at startup and can store and gest all the data 
+    
+    project_model=await ProjectModel.create_instance(
+        db_client=request.app.client_db)  # all the models now will treate with the client
+
+    # get the project or create a new one if it doesn't exist with same id
+    project = await project_model.get_project_or_create_one(
+        project_id = Project_id
+    )
+
+    nlp_controller = NLPController(
+        vector_db_client=request.app.vector_db_client,
+        embedding_client=request.app.embedding_client,
+        generation_client=request.app.generation_client,
+        parser_template=request.app.parser_template
+    )
+
+    answer, full_prompt, chat_history = nlp_controller.answer_rag_question(
+        project=project,
+        query=search_request.text,
+        limit=search_request.limit
+    )
+
+    if not answer:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "message": ResponseEnumSignal.RAG_ANSWER_FAILED.value
+            }
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "answer": answer,
+            "full_prompt": full_prompt,
+            "chat_history": chat_history  # chat_history is already a list of dicts
         }
     )

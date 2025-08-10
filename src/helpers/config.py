@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     VECTOR_DB_PATH: Optional[str] = None
     VECTOR_DB_DISTANCE_METHOD: Optional[str] = None  # Options: "EUCLIDEAN", "COSINE", "DOT"
 
+    DEFAULT_LANGUAGE: str = "en"  # Default language for templates
+    PRIMARY_LANGUAGE: str = "en"  # Primary language for templates
+
     model_config = SettingsConfigDict(env_file=".env")
 
 def get_settings():

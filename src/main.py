@@ -5,6 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from stores.llm.llm_provider_factory import LLMProviderFactory
 from stores.vector_db.vector_db_provider_factory import VectorDBProviderFactory
 from stores.llm.llm_enums import EmbedDocumentTypeEnums
+from stores.llm.templates.parser_template import TemplateParser
 
 app = FastAPI()
 
@@ -66,6 +67,11 @@ async def startup_event():
     # vector database client    
     app.vector_db_client = vector_db_provider_factory.create(provider=app_settings.VECTOR_DB_BACKEND)
     app.vector_db_client.connect()   
+
+    app.parser_template = TemplateParser(
+        language=app_settings.PRIMARY_LANGUAGE,
+        default_language=app_settings.DEFAULT_LANGUAGE
+        )
 
 
 async def shutdown_event():

@@ -12,7 +12,7 @@ class OpenAIProvider(LLMInterface):
                  ):
         
         self.api_key = api_key
-        self.api_url = api_url 
+        self.base_url = api_url
 
         self.default_input_max_characters = default_input_max_characters
         self.default_output_max_tokens = default_output_max_tokens
@@ -25,9 +25,9 @@ class OpenAIProvider(LLMInterface):
 
         self.client = OpenAI(
             api_key=self.api_key,
-            api_url=self.api_url
+            api_url=self.api_url if self.api_url and len(self.api_rrl) > 0 else None
         )
-
+        self.enums = OpenAIEnums
         self.logger = logging.getLogger(__name__)
 
     # Functions to set models and parameters

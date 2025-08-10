@@ -6,11 +6,12 @@ from typing import List
 import json 
 
 class NLPController(BaseController):
-    def __init__(self, vector_db_client, embedding_client, generation_client):
+    def __init__(self, vector_db_client, embedding_client, generation_client,parser_template):
         super().__init__()
         self.vector_db_client = vector_db_client
         self.embedding_client = embedding_client
         self.generation_client = generation_client
+        self.parser_template = parser_template
 
     def create_collection_name(self, project_id: str):
         return f"project_{project_id}_collection".strip()
@@ -185,7 +186,69 @@ class NLPController(BaseController):
         )
         if not search_results:
             raise ValueError("No search results found for the given vector")
-        return json.loads(
-                json.dumps(search_results, default =lambda o: o.__dict__)
-        ) 
+        return search_results
+    
+    def answer_rag_question(self, project: project, query: str, limit: int = 10):
+        
+        answer, full_prompt, chat_history = None, None, None
+
+        # step1: retrieve related documents
+        retrieved_documents = self.search_vector_db_collection(
+            project=project,
+            text=query,
+            limit=limit,
+        )
+
+        if not retrieved_documents or len(retrieved_documents) == 0:
+            return answer, full_prompt, chat_history
+        
+        # step2: Construct LLM prompt
+        system_prompt = self.parser_template.get("rag", "system_prompt")
+
+        documents_prompts = "\n".join([
+            self.parser_template.get("rag", "document_prompt", {
+                    "doc_num": idx + 1,
+                    "chunk_text": doc.text,
+            })
+            for idx, doc in enumerate(retrieved_documents)
+        ])
+
+        footer_prompt = self.parser_template.get("rag", "footer_prompt")
+
+        # step3: Construct Generation Client Prompts
+        chat_history = [
+            self.generation_client.abstract_prompt(
+                prompt=system_prompt,
+                role=self.generation_client.enums.SYSTEM.value,
+            )
+        ]
+
+        full_prompt = "\n\n".join([ documents_prompts,  footer_prompt])
+
+        # step4: Retrieve the Answer
+        try:
+            response = self.generation_client.generate_text(
+                prompt=full_prompt,
+                chat_history=chat_history
+            )
+            # Handle the response object appropriately
+            answer = response.text if hasattr(response, 'text') else str(response)
+            
+            # Add the user's question and the answer to chat history
+            chat_history.extend([
+                {
+                    "role": self.generation_client.enums.USER.value,
+                    "content": query
+                },
+                {
+                    "role": self.generation_client.enums.ASSISTANT.value,
+                    "content": answer
+                }
+            ])
+        except Exception as e:
+            # Log the error and return None
+            print(f"Error generating response: {str(e)}")
+            answer = None
+
+        return answer, full_prompt, chat_history
     

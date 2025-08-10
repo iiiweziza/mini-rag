@@ -24,7 +24,7 @@ class CohereProvider(LLMInterface):
             self.client = cohere.ClientV2(
                 api_key=self.api_key,   
             )
-
+            self.enums = CohereEnums
             self.logger = logging.getLogger(__name__)
 
         # Functions to set models and parameters
@@ -67,11 +67,19 @@ class CohereProvider(LLMInterface):
             temperature=temperature
             )
 
-        if not response or not response.message or len(response.message) == 0:
+        if not response or not response.message:
             self.logger.error("No response from Cohere, error while generating text.")
             return None
 
-        return response.message.content[0].text
+        # Access the message content safely
+        try:
+            if hasattr(response.message, 'content') and response.message.content:
+                return response.message.content[0].text
+            else:
+                return str(response.message)
+        except (AttributeError, IndexError) as e:
+            self.logger.error(f"Error processing Cohere response: {str(e)}")
+            return None
 
         
             
