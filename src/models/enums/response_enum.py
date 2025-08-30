@@ -24,3 +24,5 @@ class ResponseEnumSignal(Enum):
     COLLECTION_INFO_RETRIEVED = "Collection info retrieved successfully"
     VECTOR_DB_SEARCH_SUCCESS = "Vector db search results retrieved successfully"
     VECTOR_DB_SEARCH_FAILED = "Vector db search failed"
+    RAG_ANSWER_FAILED = "RAG answer failed"
+    RAG_ANSWER_SUCCESS = "RAG answer succeeded"
