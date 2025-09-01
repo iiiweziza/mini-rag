@@ -12,3 +12,9 @@ motor==3.7.0
 openai==1.95.1
 cohere==5.16.1
 qdrant-client==1.14.3
+unstructured==0.18.14
+nltk==3.9.1
+langchain-unstructured==0.1.6
+requests
+beautifulsoup4
+lxml

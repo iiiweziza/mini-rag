@@ -9,3 +9,7 @@ class processingEnumType(Enum):
     PPTX = ".pptx"
     TXT = ".txt"
     CSV = ".csv"
+    HTML = ".html"
+    MARKDOWN = ".md"
+    URL = ".url"
+    WEBPAGE = "webpage"

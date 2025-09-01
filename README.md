@@ -59,7 +59,8 @@ mini-rag/
 ---
 
 ## ✨ Features
-- Upload and validate files (PDF, TXT)
+- Upload and validate files (PDF, TXT, CSV, Markdown, HTML, Excel)
+- Upload and process URLs directly
 - Project-based document organization
 - Document chunking with LangChain (configurable size/overlap)
 - MongoDB async storage for projects, assets, and chunks
@@ -105,14 +106,16 @@ mini-rag/
    ```
 
 ---
-
+# don't forget to install : 
+  pip install "unstructured[all]" "unstructured-inference"
+  pip install networkx pandas openpyxl xlrd
 ## 🔌 API Endpoints
 
 ### Base
 - `GET /api/v1/` — Welcome/info
 
 ### Data Operations
-- `POST /api/v1/data/Upload/{Project_id}` — Upload a file to a project
+- `POST /api/v1/data/Upload/{Project_id}` — Upload a file or URL to a project
 - `POST /api/v1/data/process/{Project_id}` — Process all or a specific file in a project
 
 ### NLP Operations
@@ -125,6 +128,14 @@ mini-rag/
 **Upload Document:**
 ```bash
 curl -X POST "http://localhost:5000/api/v1/data/Upload/myproject" -F "file=@mydoc.pdf"
+```
+
+**Upload URL:**
+```bash
+curl -X POST "http://localhost:5000/api/v1/data/Upload/myproject" \
+  -F "url=https://example.com" \
+  -F "chunk_size=100" \
+  -F "chunk_overlap=20"
 ```
 
 **Process Document:**
@@ -160,7 +171,8 @@ curl -X POST "http://localhost:5000/api/v1/nlp/index/search/myproject" \
 
 - **ProcessingController**
   - Document loading and text extraction
-  - Support for PDF and TXT formats
+  - Support for PDF, TXT, CSV, Markdown, HTML, Excel formats
+  - URL content processing and web scraping
   - LangChain integration for text splitting
   - Configurable chunking parameters
 
@@ -221,10 +233,24 @@ curl -X POST "http://localhost:5000/api/v1/nlp/index/search/myproject" \
 
 ## 📝 Document Processing Flow
 
+### Unified Upload System
+The system now supports both file uploads and URL processing through a single endpoint:
+
+**File Upload:**
+- Send file via `multipart/form-data` with `file` field
+- Supports: PDF, TXT, CSV, Markdown, HTML, Excel
+- File is saved locally and metadata stored in MongoDB
+
+**URL Upload:**
+- Send form data with `url`, `chunk_size`, and `chunk_overlap` fields
+- URL content is downloaded, processed, and chunked immediately
+- Chunks are stored directly in MongoDB (no local file storage)
+
 1. **Document Upload**
-   - User uploads file via `/api/v1/data/Upload/{Project_id}`
-   - File validation and type checking
-   - Storage in project-specific directory
+   - User uploads file or URL via `/api/v1/data/Upload/{Project_id}`
+   - Automatic detection of upload type (file vs URL)
+   - Validation and type checking
+   - Storage in project-specific directory (files) or direct processing (URLs)
    - Metadata registration in MongoDB
 
 2. **Text Processing**

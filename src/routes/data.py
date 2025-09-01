@@ -1,11 +1,12 @@
-from fastapi import FastAPI, APIRouter, Depends,UploadFile , Request
+from fastapi import FastAPI, APIRouter, Depends, UploadFile, Request, Form
 from helpers.config import get_settings, Settings  # importing settings from helpers file
 import os 
 import aiofiles
 from controllers import DataController, ProjectController, ProcessingController
 import logging
+from typing import Optional
 
-from routes.schemes.data_schema import ProcessRequest
+from routes.schemes.data_schema import ProcessRequest, UploadRequest
 from models.project_model import ProjectModel
 from models.db_schemes.data_chunk import DataChunk
 from models.db_schemes.assets_files import AssetsFiles
@@ -24,54 +25,52 @@ data_router = APIRouter(
 )
 
 @data_router.post("/Upload/{Project_id}")
-async def upload_data(request:Request,file: UploadFile, Project_id: str,
-                      app_settings: Settings = Depends(get_settings)):
-    #the request follow the app at startup and can store and gest all the data 
-
-    project_model=await ProjectModel.create_instance(
-        db_client=request.app.client_db)  # all the models now will treate with the client 
-      
-    # Add await here
-    project = await project_model.get_project_or_create_one(
-        project_id = Project_id 
-    )
-
-    data_controller = DataController()
-    is_valid, result_signal = data_controller.validate_file(file=file)
-    if not is_valid:
-        return result_signal
-
-    # Change Project_id to uploading_id to match the parameter name
-    project_dir_path = ProjectController().get_project_dir(project_id=Project_id)
-    file_path, file_id = data_controller.generate_unique_file_path(org_file_name=file.filename,
-                                                           project_id=Project_id)
-    # file_id = random_string + "_" + clean_file_name
-    try:
-        async with aiofiles.open(file_path, 'wb') as out_file:
-            while chunk := await file.read(app_settings.FILE_CHUNK_SIZE):
-                await out_file.write(chunk)
-    except Exception as e:      
-        logs.error(f"Error saving file: {e}")
-        return ResponseEnumSignal.FILE_NOT_SAVED.value
+async def upload_data(
+    request: Request,
+    Project_id: str,
+    file: Optional[UploadFile] = None,
+    url: Optional[str] = Form(None),
+    chunk_size: Optional[int] = Form(100),
+    chunk_overlap: Optional[int] = Form(20),
+    app_settings: Settings = Depends(get_settings)
+):
+    """
+    Unified upload endpoint that handles both file uploads and URL processing.
     
-    # Store file assets in the database
-    asset_model = await AssetModel.create_instance(db_client=request.app.client_db) 
-
-    asset_resource =  AssetsFiles(
-         asset_project_id=project.id,  # Using the original project_id, not the MongoDB _id
-         asset_type = AssetsEnumType.ASSETS_FILE.value,  # Using the enum value for asset type
-         asset_name = file_id,
-         asset_size = os.path.getsize(file_path),  # Get the file size
+    For file uploads: Send file via multipart/form-data
+    For URL uploads: Send url, chunk_size, and chunk_overlap via form data
+    """
+    project_model = await ProjectModel.create_instance(
+        db_client=request.app.client_db
     )
+    
+    # Get or create project
+    project = await project_model.get_project_or_create_one(
+        project_id=Project_id
+    )
+    
+    data_controller = DataController()
+    
+    # Check if this is a URL upload or file upload
+    if url and url.strip():
+        # URL Upload
+        return await data_controller.process_url_upload(
+            request, Project_id, project, data_controller, 
+            url.strip(), chunk_size, chunk_overlap
+        )
+    elif file:
+        # File Upload
+        return await data_controller.process_file_upload(
+            request, Project_id, project, data_controller, 
+            file, app_settings
+        )
+    else:
+        # Neither file nor URL provided
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Either a file or URL must be provided"}
+        )
 
-    #Now we can insert the asset into the database by our new resource 
-    asset_record = await asset_model.insert_asset(asset=asset_resource)
-
-    return {
-        "Result": result_signal,
-        "File ID":str(asset_record.id),  # Using asset_name as the file ID
-        #"Project_id": str(project._id)  # Return MongoDB's _id 
-    }
 
 
 
@@ -180,56 +179,15 @@ async def process_endpoint(request: Request, Project_id: str,
     # Process files in reverse order (newest first)
     for chunks_file_asset_id, file_id in reversed(list(projects_files_ids.items())):
         # Get the file content using the file_id
-        content = process_controller.get_file_content(file_id=file_id)
+        content = process_controller.get_input_content(file_id=file_id)
 
         if content is None or len(content) == 0:
             logs.error(f"File {file_id} is empty or not found.")
             continue  # Skip to the next file if content is empty or not found
 
-        file_chunks = process_controller.process_file_content(
+        file_chunks = process_controller.process_input_content(
             file_content=content,
             file_id=file_id,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
-        
-        if file_chunks is None or len(file_chunks) == 0:
-            return {
-                "Result": ResponseEnumSignal.FAILED_PROCESS.value,
-                "File ID": file_id
-            }
-        
-        file_chunks_records = [
-            DataChunk(
-                content=chunk.page_content,
-                project_id=Project_id,  # Using the original project_id, not the MongoDB _id
-                chunk_index=i,
-                source_file=file_id,  # Using file_id as the source file name
-                chunks_file_asset_id=chunks_file_asset_id,  # Using the asset ID from the assets database,
-                chunk_metadata={"text": chunk.page_content}  # Add metadata for each chunk
-            )
-            for i, chunk in enumerate(file_chunks)
-        ]
-
-        # Insert the chunks into the database
-        no_records_chunks += await chunk_model.insert_many_chunks(file_chunks_records)
-        no_files += 1
-        
-        if not do_reset:  # If not resetting, process only the latest file
-            return JSONResponse(
-                {
-                    "Result": ResponseEnumSignal.SUCCESS.value,
-                    "File ID": file_id,
-                    "Number of Chunks": no_records_chunks,
-                    "Processed Files": no_files,
-                }
-            )
-    
-    # Return final response after processing all files (for do_reset=True case)
-    return JSONResponse(
-        {
-            "Result": ResponseEnumSignal.SUCCESS.value,
-            "Number of Chunks": no_records_chunks,
-            "Processed Files": no_files,
-        }
-    )

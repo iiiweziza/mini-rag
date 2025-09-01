@@ -16,6 +16,23 @@ services:
     networks:
       - mongo-network   
 
+  pgvector:
+    image: pgvector/pgvector:latest
+    container_name: pgvector
+    restart: always
+    #user: "1000:1000"  # Map to typical first user UID/GID
+    ports:
+      - 5432:5432
+    volumes:
+      - pgvector_data:/var/lib/postgresql/data
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    networks:
+      - mongo-network
+
 networks:
   mongo-network:
 
@@ -23,4 +40,5 @@ networks:
 volumes:
   mongo-data:
     driver: local
-  
+  pgvector_data:
+    driver: local

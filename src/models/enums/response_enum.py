@@ -26,3 +26,9 @@ class ResponseEnumSignal(Enum):
     VECTOR_DB_SEARCH_FAILED = "Vector db search failed"
     RAG_ANSWER_FAILED = "RAG answer failed"
     RAG_ANSWER_SUCCESS = "RAG answer succeeded"
+    INVALID_INPUT_TYPE = "Invalid input type. Must be file or URL."
+    URL_NOT_ACCESSIBLE = "URL is not accessible"
+    URL_VALID = "URL is valid"
+    URL_ERROR = "Error occurred while validating URL"
+    INVALID_URL = "Invalid URL format"
+    
