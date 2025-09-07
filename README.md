@@ -192,7 +192,7 @@ curl -X POST "http://localhost:5000/api/v1/nlp/index/search/myproject" \
   - MongoDB schema and operations
   - Project state management
 
-- **AssetsFiles**
+- **Asset**
   - File metadata and storage information
   - Processing status tracking
   - File type validation

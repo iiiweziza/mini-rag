@@ -121,12 +121,12 @@ class DataController(BaseController):
         
         # Store file asset in database
         from models.assets_model import AssetModel
-        from models.db_schemes.assets_files import AssetsFiles
+        from models.db_schemes.assets_files import Asset
         from models.enums import AssetsEnumType
         
-        asset_model = await AssetModel.create_instance(db_client=request.app.client_db)
+        asset_model = await AssetModel.create_instance(db_client=request.app.db_client)
         
-        asset_resource = AssetsFiles(
+        asset_resource = Asset(
             asset_project_id=project.id,
             asset_type=AssetsEnumType.ASSETS_FILE.value,
             asset_name=file_id,
@@ -171,7 +171,7 @@ class DataController(BaseController):
         try:
             from controllers import ProcessingController
             from models.assets_model import AssetModel
-            from models.db_schemes.assets_files import AssetsFiles
+            from models.db_schemes.assets_files import Asset
             from models.enums import AssetsEnumType
             from models.chunk_model import ChunkModel
             from models.db_schemes.data_chunk import DataChunk
@@ -206,9 +206,9 @@ class DataController(BaseController):
             )
             
             # Store URL asset in database
-            asset_model = await AssetModel.create_instance(db_client=request.app.client_db)
+            asset_model = await AssetModel.create_instance(db_client=request.app.db_client)
             
-            asset_resource = AssetsFiles(
+            asset_resource = Asset(
                 asset_project_id=project.id,
                 asset_type=AssetsEnumType.ASSETS_FILE.value,
                 asset_name=url_id,
@@ -218,7 +218,7 @@ class DataController(BaseController):
             asset_record = await asset_model.insert_asset(asset=asset_resource)
             
             # Store chunks in database
-            chunk_model = await ChunkModel.create_instance(db_client=request.app.client_db)
+            chunk_model = await ChunkModel.create_instance(db_client=request.app.db_client)
             
             for i, chunk in enumerate(chunks):
                 chunk_data = DataChunk(

@@ -23,10 +23,10 @@ async def index_project(request:Request,Project_id: str,
     #the request follow the app at startup and can store and gest all the data 
     
     project_model=await ProjectModel.create_instance(
-        db_client=request.app.client_db)  # all the models now will treate with the client 
+        db_client=request.app.db_client)  # all the models now will treate with the client 
       
     chunk_model = await ChunkModel.create_instance(
-        db_client=request.app.client_db
+        db_client=request.app.db_client
     )
     # get the project or create a new one if it doesn't exist with same id
     project = await project_model.get_project_or_create_one(
@@ -128,7 +128,7 @@ async def info_project(request:Request,Project_id: str):
     #the request follow the app at startup and can store and gest all the data 
     
     project_model=await ProjectModel.create_instance(
-        db_client=request.app.client_db)  # all the models now will treate with the client 
+        db_client=request.app.db_client)  # all the models now will treate with the client 
     
     # get the project or create a new one if it doesn't exist with same id
     project = await project_model.get_project_or_create_one(
@@ -160,7 +160,7 @@ async def search_project(request:Request,Project_id: str , search_request: searc
     #the request follow the app at startup and can store and gest all the data 
     
     project_model=await ProjectModel.create_instance(
-        db_client=request.app.client_db)  # all the models now will treate with the client
+        db_client=request.app.db_client)  # all the models now will treate with the client
 
     # get the project or create a new one if it doesn't exist with same id
     project = await project_model.get_project_or_create_one(
@@ -203,7 +203,7 @@ async def answer_rag(request:Request,Project_id: str , search_request: search_re
     #the request follow the app at startup and can store and gest all the data 
     
     project_model=await ProjectModel.create_instance(
-        db_client=request.app.client_db)  # all the models now will treate with the client
+        db_client=request.app.db_client)  # all the models now will treate with the client
 
     # get the project or create a new one if it doesn't exist with same id
     project = await project_model.get_project_or_create_one(

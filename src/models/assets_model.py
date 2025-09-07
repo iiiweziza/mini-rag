@@ -1,7 +1,7 @@
 from operator import index
 from .base_data_model import BaseDataModel
 from .enums.database_enum import DatabaseEnumType
-from models.db_schemes.assets_files import AssetsFiles 
+from models.db_schemes.assets_files import Asset 
 from bson import ObjectId
 
 
@@ -30,7 +30,7 @@ class AssetModel(BaseDataModel):
             # if the collection is not exist we will create it
             self.collection = self.db_client[DatabaseEnumType.COLLECTION_ASSETS_NAME.value]
             # create the collection with the indexes from the project schema
-            indexes = AssetsFiles.get_indexes()  # get the indexes from the project schema
+            indexes = Asset.get_indexes()  # get the indexes from the project schema
             for index in indexes:
                 await self.collection.create_index(
                     index["key"],
@@ -38,10 +38,10 @@ class AssetModel(BaseDataModel):
                     unique=index.get("unique", False)
                 )
 
-    async def insert_asset(self, asset: AssetsFiles):
+    async def insert_asset(self, asset: Asset):
         """
         Insert an asset into the collection.
-        :param asset: An instance of AssetsFiles to be inserted.
+        :param asset: An instance of Asset to be inserted.
         :return: The inserted asset with its ID populated.
         """
         result = await self.collection.insert_one(asset.dict(by_alias=True, exclude_unset=True))
@@ -71,7 +71,7 @@ class AssetModel(BaseDataModel):
             
             # Now check if it belongs to the correct project
             if str(asset_doc.get('asset_project_id')) == str(project_id):
-                return AssetsFiles(**asset_doc)
+                return Asset(**asset_doc)
             else:
                 print(f"Asset found but belongs to different project. Expected: {project_id}, Found: {asset_doc.get('asset_project_id')}")
                 return None
@@ -90,7 +90,7 @@ class AssetModel(BaseDataModel):
             ],
             "asset_type": asset_type,
         }).sort("asset_published", -1).to_list(length=None)
-        return [AssetsFiles(**record) for record in records]
+        return [Asset(**record) for record in records]
 
 
     async def get_asset_by_id(self,project_id , asset_file_id:str):
@@ -98,7 +98,7 @@ class AssetModel(BaseDataModel):
         Retrieve a specific asset by its ID.
         :param project_id: The ID of the project the asset belongs to.
         :param asset_file_id: The ID of the asset file to retrieve.
-        :return: An AssetsFiles object if found, None otherwise.
+        :return: An Asset object if found, None otherwise.
         """
         record = await self.collection.find_one({
             "$or": [
@@ -107,4 +107,4 @@ class AssetModel(BaseDataModel):
        ],
             "asset_name": asset_file_id
         })
-        return AssetsFiles(**record) if record else None
+        return Asset(**record) if record else None

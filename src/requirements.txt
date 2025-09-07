@@ -18,3 +18,7 @@ langchain-unstructured==0.1.6
 requests
 beautifulsoup4
 lxml
+SQLAlchemy==2.0.43
+asyncpg==0.30.0
+alembic==1.16.5
+psycopg2==2.9.10

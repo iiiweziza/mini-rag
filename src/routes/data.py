@@ -9,7 +9,7 @@ from typing import Optional
 from routes.schemes.data_schema import ProcessRequest, UploadRequest
 from models.project_model import ProjectModel
 from models.db_schemes.data_chunk import DataChunk
-from models.db_schemes.assets_files import AssetsFiles
+from models.db_schemes.assets_files import Asset
 from models.chunk_model import ChunkModel
 from models.assets_model import AssetModel
 from models.enums import ResponseEnumSignal , AssetsEnumType
@@ -41,7 +41,7 @@ async def upload_data(
     For URL uploads: Send url, chunk_size, and chunk_overlap via form data
     """
     project_model = await ProjectModel.create_instance(
-        db_client=request.app.client_db
+        db_client=request.app.db_client
     )
     
     # Get or create project
@@ -79,7 +79,7 @@ async def upload_data(
 async def process_endpoint(request: Request, Project_id: str,
                       ProcessRequest: ProcessRequest):
     # Create a project model instance using the database client
-    project_model =await ProjectModel.create_instance(db_client=request.app.client_db)
+    project_model =await ProjectModel.create_instance(db_client=request.app.db_client)
     # Get the project by ID or create it if it doesn't exist
     project = await project_model.get_project_or_create_one(
         project_id=Project_id
@@ -97,7 +97,7 @@ async def process_endpoint(request: Request, Project_id: str,
     
     # Create an asset model instance for asset operations
     asset_model = await AssetModel.create_instance(
-             db_client=request.app.client_db
+             db_client=request.app.db_client
         )
 
     projects_files_ids = {}
@@ -169,7 +169,7 @@ async def process_endpoint(request: Request, Project_id: str,
     no_files = 0
 
     # Initialize chunk model
-    chunk_model = await ChunkModel.create_instance(db_client=request.app.client_db)
+    chunk_model = await ChunkModel.create_instance(db_client=request.app.db_client)
 
     if do_reset == 1 :
                     # If do_reset is 1, delete all existing chunks for this project

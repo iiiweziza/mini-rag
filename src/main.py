@@ -16,11 +16,14 @@ async def startup_event():
     Event to be called when the app starts
     """
     app_settings = get_settings()
-    # Create an asynchronous MongoDB client using the connection URL from settings 
-    # when the app starts up, the mongo connection will be created
-    # Then we create and connect client_db by the connection URL and database name from this connection 
-    app.mongo_connection = AsyncIOMotorClient(app_settings.MONGO_URI)
-    app.client_db = app.mongo_connection[app_settings.MONGODB_DATA_BASE]
+     # connection to postgres
+
+    postgres_conn = f"postgresql+asyncpg://{settings.POSTGRES_USERNAME}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_MAIN_DATABASE}"
+
+    app.db_engine = create_async_engine(postgres_conn)
+    app.db_client = sessionmaker(
+        app.db_engine, class_=AsyncSession, expire_on_commit=False
+    )
 
     llm_provider_factory = LLMProviderFactory(config=app_settings)
     vector_db_provider_factory = VectorDBProviderFactory(config=app_settings)
@@ -75,9 +78,13 @@ async def startup_event():
 
 
 async def shutdown_event():
-    # Close the MongoDB connection when the app is shutting down
-    app.mongo_connection.close()
-    app.vector_db_client.disconnect()
+    #close to postgres connection 
+    postgres_conn = f"postgresql+asyncpg://{settings.POSTGRES_USERNAME}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_MAIN_DATABASE}"
+
+    app.db_engine = create_async_engine(postgres_conn)
+    app.db_client = sessionmaker(
+        app.db_engine, class_=AsyncSession, expire_on_commit=False
+    )   
 
 
 app.on_event("startup")(startup_event)
