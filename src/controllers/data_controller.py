@@ -3,6 +3,9 @@ from .base_controller import BaseController
 from models.enums import ResponseEnumSignal
 from .project_controller import ProjectController
 from models.enums import ResponseEnumSignal, InputTypeEnum
+from models.db_schemes import Asset
+from models.enums import AssetsEnumType
+from models.assets_model import AssetModel
 
 import logging
 import re
@@ -120,24 +123,22 @@ class DataController(BaseController):
             return ResponseEnumSignal.FILE_NOT_SAVED.value
         
         # Store file asset in database
-        from models.assets_model import AssetModel
-        from models.db_schemes.assets_files import Asset
-        from models.enums import AssetsEnumType
+        
         
         asset_model = await AssetModel.create_instance(db_client=request.app.db_client)
         
         asset_resource = Asset(
-            asset_project_id=project.id,
+            asset_project_id=project.project_id,
             asset_type=AssetsEnumType.ASSETS_FILE.value,
             asset_name=file_id,
             asset_size=os.path.getsize(file_path),
         )
         
-        asset_record = await asset_model.insert_asset(asset=asset_resource)
+        asset_record = await asset_model.create_asset(asset=asset_resource)
         
         return {
             "Result": result_signal,
-            "File ID": str(asset_record.id),
+            "File ID": str(asset_record.asset_id),
             "Type": "file",
             "Filename": file.filename
         }
@@ -209,31 +210,31 @@ class DataController(BaseController):
             asset_model = await AssetModel.create_instance(db_client=request.app.db_client)
             
             asset_resource = Asset(
-                asset_project_id=project.id,
+                asset_project_id=project.project_id,
                 asset_type=AssetsEnumType.ASSETS_FILE.value,
                 asset_name=url_id,
                 asset_size=len(str(url_content)),  # Approximate size
             )
             
-            asset_record = await asset_model.insert_asset(asset=asset_resource)
+            asset_record = await asset_model.create_asset(asset=asset_resource)
             
             # Store chunks in database
             chunk_model = await ChunkModel.create_instance(db_client=request.app.db_client)
             
             for i, chunk in enumerate(chunks):
                 chunk_data = DataChunk(
-                    project_id=str(project.id),  # Convert ObjectId to string
+                    project_id=str(project.project_id),  # Convert ObjectId to string
                     content=chunk.page_content,
                     chunk_index=i,
                     source_file=url_id,
-                    chunks_file_asset_id=asset_record.id,
+                    chunks_file_asset_id=asset_record.asset_id,
                     chunk_metadata=chunk.metadata
                 )
-                await chunk_model.insert_chunk(chunk=chunk_data)
+                await chunk_model.create_chunk(chunk=chunk_data)
             
             return {
                 "Result": "URL processed successfully",
-                "URL ID": str(asset_record.id),
+                "URL ID": str(asset_record.asset_id),
                 "Chunks Created": len(chunks),
                 "URL": url,
                 "Type": "url"

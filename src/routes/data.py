@@ -8,8 +8,7 @@ from typing import Optional
 
 from routes.schemes.data_schema import ProcessRequest, UploadRequest
 from models.project_model import ProjectModel
-from models.db_schemes.data_chunk import DataChunk
-from models.db_schemes.assets_files import Asset
+from models.db_schemes import DataChunk, Asset
 from models.chunk_model import ChunkModel
 from models.assets_model import AssetModel
 from models.enums import ResponseEnumSignal , AssetsEnumType
@@ -92,7 +91,6 @@ async def process_endpoint(request: Request, Project_id: str,
     do_reset = ProcessRequest.do_reset
     
     print(f"Requested Project_id (from path): {Project_id}")
-    print(f"MongoDB Project _id (project.id): {project.id}")
     print(f"ProcessRequest.file_id: {ProcessRequest.file_id}")
     
     # Create an asset model instance for asset operations
@@ -105,12 +103,11 @@ async def process_endpoint(request: Request, Project_id: str,
         try:
             print(f"Looking for file with ID: {ProcessRequest.file_id}")
             print(f"Project ID from URL: {Project_id}")
-            print(f"Project MongoDB ID: {project.id}")
             
             # Use the MongoDB ID directly since that's what we returned during upload
-            asset_record = await asset_model.get_asset_by_mongodb_id(
-                project_id=project.id,  # This is the MongoDB _id of the project
-                mongodb_id=ProcessRequest.file_id
+            asset_record = await asset_model.get_asset_record(
+                asset_project_id=str(project.project_id),  # Convert to string for the method
+                asset_name=ProcessRequest.file_id
             )
             
             if asset_record is None:
@@ -119,7 +116,7 @@ async def process_endpoint(request: Request, Project_id: str,
                     {
                         "Result": ResponseEnumSignal.FILE_ID_ERROR.value,
                         "File ID": ProcessRequest.file_id,
-                        "Project ID": project.id
+                        "Project ID": project.project_id
                     },
                     status_code=404
                 )
@@ -127,7 +124,7 @@ async def process_endpoint(request: Request, Project_id: str,
             print(f"Found asset record: {asset_record}")
             # If file_id is provided, use it to get the specific file
             projects_files_ids = {
-                asset_record.id: asset_record.asset_name
+                asset_record.asset_id: asset_record.asset_name
             }
         except Exception as e:
             logs.error(f"Error fetching asset with ID {ProcessRequest.file_id}: {e}")
@@ -143,11 +140,11 @@ async def process_endpoint(request: Request, Project_id: str,
     else:
         # If no file_id is provided, get all files of the specified type in the project
         assets_project_files = await asset_model.get_all_project_assets(
-            project_id=project.id,  # Use the MongoDB ObjectId for asset_project_id
+            asset_project_id=project.project_id,  # Pass as integer directly
             asset_type=AssetsEnumType.ASSETS_FILE.value
         )
         # Build a dictionary of all asset ids and names for the project
-        projects_files_ids = {record.id : record.asset_name
+        projects_files_ids = {record.asset_id : record.asset_name
                               for record in assets_project_files
                               }
         print(f"Found asset file ids: {projects_files_ids}")
@@ -173,8 +170,13 @@ async def process_endpoint(request: Request, Project_id: str,
 
     if do_reset == 1 :
                     # If do_reset is 1, delete all existing chunks for this project
-        _= await chunk_model.delete_chunks_by_project_id(project_id=Project_id)
-
+        # Convert Project_id to integer for the database query
+        try:
+            project_id_int = int(Project_id)
+            _ = await chunk_model.delete_chunks_by_project_id(project_id=project_id_int)
+        except ValueError:
+            # If conversion fails, log the error but continue processing
+            logs.error(f"Invalid project ID format: {Project_id}")
 
     # Process files in reverse order (newest first)
     for chunks_file_asset_id, file_id in reversed(list(projects_files_ids.items())):
@@ -191,3 +193,34 @@ async def process_endpoint(request: Request, Project_id: str,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
         )
+        
+        print(f"Processed {len(file_chunks)} chunks for file {file_id}")
+        
+        # Store chunks in database
+        chunk_objects = []
+        for i, chunk in enumerate(file_chunks):
+            chunk_object = DataChunk(
+                chunk_text=chunk.page_content,
+                chunk_metadata=chunk.metadata,
+                chunk_order=i,
+                chunk_project_id=project.project_id,
+                chunk_asset_id=chunks_file_asset_id
+            )
+            chunk_objects.append(chunk_object)
+            
+        # Insert all chunks at once
+        inserted_count = await chunk_model.insert_many_chunks(chunks=chunk_objects)
+        print(f"Inserted {inserted_count} chunks into database for file {file_id}")
+        
+        no_records_chunks += inserted_count
+        no_files += 1
+
+    # Return success response
+    return JSONResponse(
+        status_code=200,
+        content={
+            "Result": ResponseEnumSignal.SUCCESS.value,
+            "Processed Files": no_files,
+            "Processed Chunks": no_records_chunks
+        }
+    )

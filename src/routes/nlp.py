@@ -54,15 +54,22 @@ async def index_project(request:Request,Project_id: str,
     inserted_items_count = 0
     BATCH_SIZE = 100  # Process chunks in batches of 100
     
-    debug_messages.append(f"Starting indexing for project {project.id}")
+    debug_messages.append(f"Starting indexing for project {project.project_id}")
     
     try:
         # Get all chunks at once with a reasonable limit
-        # Use project_id (string) instead of MongoDB _id
-        all_chunks = await chunk_model.get_project_chunks_bulk(
-            project_id=Project_id,  # Use the original project_id string
-            limit=1000  # Reasonable limit to prevent memory issues
-        )
+        # Convert Project_id string to integer for the database query
+        try:
+            project_id_int = int(Project_id)
+            all_chunks = await chunk_model.get_project_chunks_bulk(
+                project_id=project_id_int,
+                limit=1000  # Reasonable limit to prevent memory issues
+            )
+        except ValueError:
+            return JSONResponse(
+                status_code=400,
+                content={"error": f"Invalid project ID format: {Project_id}"}
+            )
         total_chunks = len(all_chunks)
         debug_messages.append(f"Retrieved {total_chunks} chunks for processing")
         debug_messages.append(f"Looking for chunks with project_id: {Project_id}")
@@ -109,7 +116,7 @@ async def index_project(request:Request,Project_id: str,
         debug_messages.append(error_msg)
         logs.error(error_msg)
 
-    final_msg = f"Total inserted chunks for project {project.id}: {inserted_items_count}"
+    final_msg = f"Total inserted chunks for project {project.project_id}: {inserted_items_count}"
     logs.info(final_msg)
     debug_messages.append(final_msg)
     

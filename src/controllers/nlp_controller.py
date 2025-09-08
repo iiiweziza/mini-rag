@@ -1,6 +1,6 @@
 from .base_controller import BaseController
-from models.db_schemes import project 
-from models.db_schemes.data_chunk import DataChunk
+from models.db_schemes import Project 
+from models.db_schemes import DataChunk
 from stores.llm.llm_enums import EmbedDocumentTypeEnums
 from typing import List 
 import json 
@@ -16,11 +16,11 @@ class NLPController(BaseController):
     def create_collection_name(self, project_id: str):
         return f"project_{project_id}_collection".strip()
 
-    def reset_vector_db_collection(self, project: project ):
+    def reset_vector_db_collection(self, project: Project ):
         collection_name = self.create_collection_name(project.project_id)
         self.vector_db_client.delete_collection(collection_name = collection_name)
 
-    def get_vector_db_collection_info(self, project: project):
+    def get_vector_db_collection_info(self, project: Project):
         collection_name = self.create_collection_name(project.project_id)
         collection_info = self.vector_db_client.get_collection_info(collection_name=collection_name)
 
@@ -69,7 +69,7 @@ class NLPController(BaseController):
             messages.append(f"Error testing LLM configuration: {str(e)}")
             return False, messages
 
-    def indexes_into_vector_db(self, project: project, chunks: List[DataChunk],
+    def indexes_into_vector_db(self, project: Project, chunks: List[DataChunk],
                                chunk_ids: List[int],
                                do_reset: bool = False):
         messages = []  # List to collect debug messages
@@ -87,7 +87,7 @@ class NLPController(BaseController):
             messages.append(f"Created collection name: {collection_name}")
 
             # manage and convert items
-            texts = [t.content for t in chunks]
+            texts = [t.chunk_text for t in chunks]
             metadata = [t.chunk_metadata for t in chunks]
             messages.append(f"Processing {len(texts)} text chunks")
             if texts:
@@ -163,7 +163,7 @@ class NLPController(BaseController):
             return False, messages
 
 
-    def search_vector_db_collection(self, project: project ,text: str, limit: int = 5):
+    def search_vector_db_collection(self, project: Project ,text: str, limit: int = 5):
         """
         Search the vector database collection for the given project using the provided text.
         Returns a list of matching DataChunk objects.
@@ -188,7 +188,7 @@ class NLPController(BaseController):
             raise ValueError("No search results found for the given vector")
         return search_results
     
-    def answer_rag_question(self, project: project, query: str, limit: int = 10):
+    def answer_rag_question(self, project: Project, query: str, limit: int = 10):
         
         answer, full_prompt, chat_history = None, None, None
 

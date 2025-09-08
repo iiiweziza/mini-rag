@@ -1,76 +1,103 @@
 from operator import index
 from .enums.database_enum import DatabaseEnumType
 from .base_data_model import BaseDataModel
-from .db_schemes.project import Project
+from .db_schemes import Project
+from sqlalchemy.future import select
+from sqlalchemy import func
 
 class ProjectModel(BaseDataModel):
 
     def __init__(self, db_client: object):
         super().__init__(db_client=db_client)
-        # connect with collection of the db_client 
-        self.collection = self.db_client[DatabaseEnumType.COLLECTION_PROJECT_NAME.value]  
-       
-    # to put init and init_collection in one place becouse one is async and the other is not
+        self.db_client = db_client
 
     @classmethod
     async def create_instance(cls, db_client: object):
-        instance = cls(db_client=db_client)
-        await instance.init_collection()  # Ensure the collection is initialized
+        instance = cls(db_client)
         return instance
 
-    async def init_collection(self):
-        """
-        Initialize the collection by creating indexes based on the Project schema.
-        This method is called to ensure that the collection is ready for use.
-        """
-        all_collections = await self.db_client.list_collection_names()
-        if DatabaseEnumType.COLLECTION_PROJECT_NAME.value not in all_collections:
-            # if the collection is not exist we will create it
-            self.collection = self.db_client[DatabaseEnumType.COLLECTION_PROJECT_NAME.value]
-            # create the collection with the indexes from the project schema
-            indexes = Project.get_indexes()  # get the indexes from the project schema
-            for index in indexes:
-                await self.collection.create_index(
-                    index["key"],
-                    name=index["name"],
-                    unique=index["unique"]
-                )
-
+  
        #now we want to inser the database but with the schema
-    async def insert_project(self,project: Project):
-        # we will use the insert_one method to insert the project in the collection
-        result = await self.collection.insert_one(project.dict(by_alias=True, exclude_unset=True)) # to appeare with alies name 
-        #insert with project schema and convert it to dict to can insert in the db
-        project.id = result.inserted_id
-        return project    
+    async def create_project(self, project: Project):
+        async with self.db_client() as session:
+            async with session.begin():
+                session.add(project)
+            await session.commit()
+            await session.refresh(project)
+        
+        return project
+
     
-    async def get_project_or_create_one(self, project_id : str):  # project_id => the uploading id 
-        #get project by id form collection
-        record = await self.collection.find_one({"project_id":project_id})
-        if record is None:
-            # if the project is not found we will create a new one
-            project = Project(project_id=project_id)
-            await self.insert_project(project)
+    async def get_project_or_create_one(self, project_id: str):
+        async with self.db_client() as session:
+            # Convert project_id to integer for comparison with the database column
+            project_id_int = None
+            try:
+                project_id_int = int(project_id)
+            except ValueError:
+                # If conversion fails, create a new project with an auto-generated ID
+                # But first check if there are any existing projects to avoid creating multiple
+                query = select(func.count(Project.project_id))
+                result = await session.execute(query)
+                project_count = result.scalar_one()
+                
+                if project_count > 0:
+                    # Get the first project if one already exists
+                    query = select(Project)
+                    result = await session.execute(query)
+                    project = result.scalars().first()
+                    return project
+                else:
+                    # Create a new project with auto-generated ID if no projects exist
+                    project_rec = Project()
+                    project = await self.create_project(project=project_rec)
+                    return project
+                
+            # First check if project already exists
+            query = select(Project).where(Project.project_id == project_id_int)
+            result = await session.execute(query)
+            project = result.scalar_one_or_none()
+            
+            if project is None:
+                # Try to create a project with the specified ID
+                project_rec = Project(project_id=project_id_int)
+                try:
+                    project = await self.create_project(project=project_rec)
+                except Exception as e:
+                    # If there's an integrity error (duplicate key), fetch the existing project
+                    if "duplicate" in str(e).lower() or "unique" in str(e).lower():
+                        # Fetch the existing project with this ID
+                        result = await session.execute(query)
+                        project = result.scalar_one_or_none()
+                        if project is None:
+                            # If still None, get any existing project to avoid creating multiple
+                            query = select(Project)
+                            result = await session.execute(query)
+                            project = result.scalars().first()
+                            if project is None:
+                                # This shouldn't happen, but as a fallback create with auto-generated ID
+                                project_rec = Project()
+                                project = await self.create_project(project=project_rec)
+                    else:
+                        # Re-raise if it's a different error
+                        raise
             return project
-        return Project(**record)  # convert the record to a project object it was a dict
-    
-    async def get_all_projects(self, page :int=1,page_size:int=10):
-        """
-        Comments:
-            - Counts the total number of documents in the collection to determine pagination.
-            - Calculates the total number of pages based on the page size.
-            - Retrieves the appropriate subset of documents for the requested page using skip and limit.
-            - Converts each document into a Project instance and appends it to the projects list.
-            - Returns the list of projects and the total number of pages.
-        """
-        total_documents = await self.collection.count_documents({})
-        total_pages = (total_documents // page_size) 
-        if total_documents % page_size > 0:
-            total_pages += 1
+    async def get_all_projects(self, page: int=1, page_size: int=10):
 
-        cursor = self.collection.find().skip((page - 1) * page_size).limit(page_size)
-        projects = []    
-        async for document in cursor:
-            projects.append(Project(**document))
+        async with self.db_client() as session:
+            async with session.begin():
 
-        return projects,total_pages
+                total_documents = await session.execute(select(
+                    func.count( Project.project_id )
+                ))
+
+                total_documents = total_documents.scalar_one()
+
+                total_pages = total_documents // page_size
+                if total_documents % page_size > 0:
+                    total_pages += 1
+
+                query = select(Project).offset((page - 1) * page_size ).limit(page_size)
+                projects = await session.execute(query).scalars().all()
+
+                return projects, total_pages

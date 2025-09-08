@@ -20,7 +20,7 @@ class ProjectController(BaseController):
 
     def get_project_dir(self, project_id: str):
         '''this function will return the path of the project directory'''
-        project_dir = os.path.join(self.uploaded_files_dir, project_id)
+        project_dir = os.path.join(self.uploaded_files_dir, str(project_id))
         if not os.path.exists(project_dir):
             os.makedirs(project_dir)
         return project_dir

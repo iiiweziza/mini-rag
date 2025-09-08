@@ -6,6 +6,8 @@ from stores.llm.llm_provider_factory import LLMProviderFactory
 from stores.vector_db.vector_db_provider_factory import VectorDBProviderFactory
 from stores.llm.llm_enums import EmbedDocumentTypeEnums
 from stores.llm.templates.parser_template import TemplateParser
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 app = FastAPI()
 
@@ -18,7 +20,7 @@ async def startup_event():
     app_settings = get_settings()
      # connection to postgres
 
-    postgres_conn = f"postgresql+asyncpg://{settings.POSTGRES_USERNAME}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_MAIN_DATABASE}"
+    postgres_conn = f"postgresql+asyncpg://{app_settings.POSTGRES_USERNAME}:{app_settings.POSTGRES_PASSWORD}@{app_settings.POSTGRES_HOST}:{app_settings.POSTGRES_PORT}/{app_settings.POSTGRES_MAIN_DATABASE}"
 
     app.db_engine = create_async_engine(postgres_conn)
     app.db_client = sessionmaker(
@@ -79,7 +81,7 @@ async def startup_event():
 
 async def shutdown_event():
     #close to postgres connection 
-    postgres_conn = f"postgresql+asyncpg://{settings.POSTGRES_USERNAME}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_MAIN_DATABASE}"
+    postgres_conn = f"postgresql+asyncpg://{app_settings.POSTGRES_USERNAME}:{app_settings.POSTGRES_PASSWORD}@{app_settings.POSTGRES_HOST}:{app_settings.POSTGRES_PORT}/{app_settings.POSTGRES_MAIN_DATABASE}"
 
     app.db_engine = create_async_engine(postgres_conn)
     app.db_client = sessionmaker(
