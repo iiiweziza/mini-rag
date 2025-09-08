@@ -98,5 +98,5 @@ class OpenAIProvider(LLMInterface):
         # Implementation for abstracting prompt using OpenAI API
         return {
             "role": role,
-            "content": self.process_text(prompt)
+            "content": prompt
         }

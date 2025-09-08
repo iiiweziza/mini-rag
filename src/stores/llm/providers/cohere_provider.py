@@ -112,7 +112,7 @@ class CohereProvider(LLMInterface):
         # Implementation for abstracting prompt using Cohere API
         return {
                 "role": role,
-                "content": self.process_text(prompt)
+                "content": prompt
             }
         # Add any additional methods or properties as needed    
         

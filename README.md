@@ -125,6 +125,12 @@ mini-rag/
 
 #### Example Requests
 
+for ollama  local
+ollama list 
+ollama serve 
+baseURL: 'http://localhost:11434/v1'
+model qwen3:4b-instruct-2507-q4_K_M
+
 **Upload Document:**
 ```bash
 curl -X POST "http://localhost:5000/api/v1/data/Upload/myproject" -F "file=@mydoc.pdf"
