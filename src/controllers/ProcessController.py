@@ -1,8 +1,18 @@
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse
 from .BaseController import BaseController
 from .ProjectController import ProjectController
 import os
 from langchain_community.document_loaders import TextLoader
 from langchain_community.document_loaders import PyMuPDFLoader
+from langchain_community.document_loaders import UnstructuredWordDocumentLoader
+from langchain_community.document_loaders import CSVLoader
+from langchain_community.document_loaders import UnstructuredHTMLLoader
+from langchain_community.document_loaders import UnstructuredMarkdownLoader
+from langchain_community.document_loaders import UnstructuredExcelLoader
+from langchain_community.document_loaders import WebBaseLoader
+from langchain_community.document_loaders import NotionDBLoader
 from models import ProcessingEnum
 from typing import List
 from dataclasses import dataclass
@@ -13,6 +23,27 @@ class Document:
     metadata: dict
 
 class ProcessController(BaseController):
+    def crawl_and_extract(self, url, max_pages=5):
+        visited = set()
+        to_visit = [url]
+        results = []
+        while to_visit and len(visited) < max_pages:
+            current_url = to_visit.pop(0)
+            if current_url in visited:
+                continue
+            try:
+                resp = requests.get(current_url, timeout=10)
+                soup = BeautifulSoup(resp.text, "html.parser")
+                main_text = ' '.join([tag.get_text() for tag in soup.find_all(['p', 'h1', 'h2', 'h3'])])
+                results.append({'url': current_url, 'text': main_text})
+                visited.add(current_url)
+                for link in soup.find_all('a', href=True):
+                    href = urljoin(current_url, link['href'])
+                    if urlparse(href).netloc == urlparse(url).netloc and href not in visited:
+                        to_visit.append(href)
+            except Exception:
+                continue
+        return results
 
     def __init__(self, project_id: str):
         super().__init__()
@@ -24,22 +55,36 @@ class ProcessController(BaseController):
         return os.path.splitext(file_id)[-1]
 
     def get_file_loader(self, file_id: str):
-
         file_ext = self.get_file_extension(file_id=file_id)
         file_path = os.path.join(
             self.project_path,
             file_id
         )
-
         if not os.path.exists(file_path):
             return None
-
         if file_ext == ProcessingEnum.TXT.value:
             return TextLoader(file_path, encoding="utf-8")
-
         if file_ext == ProcessingEnum.PDF.value:
             return PyMuPDFLoader(file_path)
-        
+        if file_ext == ProcessingEnum.DOCX.value:
+            return UnstructuredWordDocumentLoader(file_path)
+        if file_ext == ProcessingEnum.CSV.value:
+            return CSVLoader(file_path)
+        if file_ext == ProcessingEnum.HTML.value:
+            return UnstructuredHTMLLoader(file_path)
+        if file_ext == ProcessingEnum.MD.value:
+            return UnstructuredMarkdownLoader(file_path)
+        if file_ext == ProcessingEnum.XLSX.value:
+            return UnstructuredExcelLoader(file_path)
+        if file_ext == ProcessingEnum.WEB.value:
+            # file_id is expected to be a URL string for web
+            return WebBaseLoader(file_id)
+        if file_ext == ProcessingEnum.NOTION.value:
+            # file_id is expected to be a Notion DB URL or ID
+            # You may need to pass integration_token and database_id as required by NotionDBLoader
+            # Example: NotionDBLoader(integration_token, database_id)
+            # Here, just a placeholder usage:
+            return NotionDBLoader(file_id)
         return None
 
     def get_file_content(self, file_id: str):

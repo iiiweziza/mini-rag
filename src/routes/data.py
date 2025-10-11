@@ -1,4 +1,7 @@
-from fastapi import FastAPI, APIRouter, Depends, UploadFile, status, Request
+from controllers.ProcessController import Document
+from fastapi import FastAPI, APIRouter, Depends, UploadFile, status, Request, Form
+import re
+from langchain_community.document_loaders import WebBaseLoader
 from fastapi.responses import JSONResponse
 import os
 from helpers.config import get_settings, Settings
@@ -22,8 +25,34 @@ data_router = APIRouter(
 )
 
 @data_router.post("/upload/{project_id}")
-async def upload_data(request: Request, project_id: int, file: UploadFile,
+async def upload_data(request: Request, project_id: int,
+                      file: UploadFile = None,
+                      url: str = Form(None),
+                      crawl_limit: int = Form(3),
                       app_settings: Settings = Depends(get_settings)):
+    # If a URL is provided, validate and process as web input
+    if url:
+        url_pattern = re.compile(r'^(https?://)[^\s]+$')
+        if not url_pattern.match(url):
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"signal": "INVALID_URL"})
+        try:
+            process_controller = ProcessController(project_id=str(project_id))
+            pages = process_controller.crawl_and_extract(url, max_pages=crawl_limit)
+            chunked_pages = []
+            for page in pages:
+                file_content = [Document(page_content=page['text'], metadata={'url': page['url']})]
+                chunks = process_controller.process_file_content(file_content, file_id=page['url'])
+                chunked_pages.append({'url': page['url'], 'num_chunks': len(chunks)})
+            return JSONResponse(content={
+                "signal": "WEB_URL_CRAWL_SUCCESS",
+                "url": url,
+                "num_pages": len(pages),
+                "pages": chunked_pages
+            })
+        except Exception as e:
+            logger.error(f"Error crawling URL: {e}")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"signal": "WEB_URL_CRAWL_FAILED", "error": str(e)})
+    # Otherwise, process as file upload
         
     
     project_model = await ProjectModel.create_instance(
