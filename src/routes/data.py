@@ -59,6 +59,8 @@ async def upload_data(request: Request, project_id: int,
         db_client=request.app.db_client
     )
 
+    # For now, we're not associating projects with users
+    # In a real implementation, you would get the user_id from the auth token
     project = await project_model.get_project_or_create_one(
         project_id=project_id
     )
@@ -129,6 +131,8 @@ async def process_endpoint(request: Request, project_id: int, process_request: P
         db_client=request.app.db_client
     )
 
+    # For now, we're not associating projects with users
+    # In a real implementation, you would get the user_id from the auth token
     project = await project_model.get_project_or_create_one(
         project_id=project_id
     )

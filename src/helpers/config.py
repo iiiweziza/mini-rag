@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+import os
 
 class Settings(BaseSettings):
 
@@ -40,6 +41,13 @@ class Settings(BaseSettings):
 
     PRIMARY_LANG: str = "en"
     DEFAULT_LANG: str = "en"
+    
+    # JWT Settings
+    JWT_ALGORITHM: str = "RS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    JWT_REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
+    JWT_PRIVATE_KEY_PATH: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "security", "private.pem")
+    JWT_PUBLIC_KEY_PATH: str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "security", "public.pem")
 
     class Config:
         env_file = ".env"

@@ -19,4 +19,9 @@ class ProjectController(BaseController):
 
         return project_dir
 
-    
+    async def get_project_or_create_one(self, project_model, project_id: str, user_id: int = None):
+        project = await project_model.get_project_or_create_one(
+            project_id=project_id,
+            user_id=user_id
+        )
+        return project

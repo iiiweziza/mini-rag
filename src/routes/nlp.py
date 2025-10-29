@@ -27,6 +27,8 @@ async def index_project(request: Request, project_id: int, push_request: PushReq
         db_client=request.app.db_client
     )
 
+    # For now, we're not associating projects with users
+    # In a real implementation, you would get the user_id from the auth token
     project = await project_model.get_project_or_create_one(
         project_id=project_id
     )
@@ -107,6 +109,8 @@ async def get_project_index_info(request: Request, project_id: int):
         db_client=request.app.db_client
     )
 
+    # For now, we're not associating projects with users
+    # In a real implementation, you would get the user_id from the auth token
     project = await project_model.get_project_or_create_one(
         project_id=project_id
     )
@@ -134,6 +138,8 @@ async def search_index(request: Request, project_id: int, search_request: Search
         db_client=request.app.db_client
     )
 
+    # For now, we're not associating projects with users
+    # In a real implementation, you would get the user_id from the auth token
     project = await project_model.get_project_or_create_one(
         project_id=project_id
     )
@@ -171,6 +177,8 @@ async def answer_rag(request: Request, project_id: int, search_request: SearchRe
         db_client=request.app.db_client
     )
 
+    # For now, we're not associating projects with users
+    # In a real implementation, you would get the user_id from the auth token
     project = await project_model.get_project_or_create_one(
         project_id=project_id
     )
